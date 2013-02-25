@@ -7,16 +7,13 @@ public class Database_ImportEngine {
 		boolean importEdges = true;
 		boolean createKeys = false;
 		
-		OperatingSystemType osType = OperatingSystemType.WINDOWS;
-//		OperatingSystemType osType = OperatingSystemType.LINUX;
-
 		String dataPrefix = "randomDB_";
 
 //		DatabaseType [] dbTypes = {DatabaseType.MYSQL};
 		Database_Vendor [] dbVendors = {Database_Vendor.ORIENTDB};
 
 		Database_Import importDB;
-		String datafilePath = Data_Common.getDefaultDatafilePath(osType);
+		String datafilePath = Data_Common.getDefaultDatafilePath();
 		String dataName;
 		
 		File dataDir = new File(datafilePath);

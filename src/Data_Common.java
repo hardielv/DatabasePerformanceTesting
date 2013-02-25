@@ -5,6 +5,9 @@ import java.util.Scanner;
 
 
 public class Data_Common {
+	private static String OS = System.getProperty("os.name").toLowerCase();
+	private static OperatingSystemType OS_TYPE = determineOS(); 
+	
 	private final static String default_Linux_datafilePath = "/home/m113216/datafiles/";	
 	private final static String default_Windows_datafilePath = "C:/scratch/datafiles/";
 	
@@ -36,7 +39,22 @@ public class Data_Common {
 		SPECS_FULL_PATH = DATA_DIR + "/" + SPECS_FILE;
 		DB_NAME = dbName;
 	}
-	
+
+	public static OperatingSystemType determineOS(){
+		OperatingSystemType osType = null;
+		if(OS.indexOf("win") >= 0){
+			osType = OperatingSystemType.WINDOWS;
+		} else if (OS.indexOf("inx") >= 0 || OS.indexOf("nux") >= 0 || 
+				   OS.indexOf("aix") >= 0 || OS.indexOf("sunos") >= 0){
+			osType = OperatingSystemType.LINUX;
+		} else {
+			System.out.println("Unknown Operating System");
+			System.exit(1);
+		}
+		
+		return osType;
+	}
+
 	public void build(){
 		File envFile = new File(SPECS_FULL_PATH);
 		
@@ -71,7 +89,7 @@ public class Data_Common {
 			}			
 			scanner.close();
 		} catch(Exception e){
-			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 	
@@ -112,14 +130,14 @@ public class Data_Common {
 			out.flush();
 			out.close();
 		} catch(Exception e){
-			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace();
 		}
 
 	}
 	
 	
-	public static String getDefaultDatafilePath(OperatingSystemType osType){
-		if(osType == OperatingSystemType.LINUX)
+	public static String getDefaultDatafilePath(){
+		if(OS_TYPE == OperatingSystemType.LINUX)
 			return default_Linux_datafilePath;
 		
 		return default_Windows_datafilePath;
@@ -141,4 +159,5 @@ public class Data_Common {
 	public int getEdgeTypeCount() { return NUM_EDGE_TYPES;}
 	public int getVertexCount() { return TOTAL_VERTICES;}
 	public int getEdgeCount() { return TOTAL_EDGES;}	
+	public OperatingSystemType getOS() { return OS_TYPE; }
 }

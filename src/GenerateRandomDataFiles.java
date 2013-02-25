@@ -7,8 +7,6 @@ import java.util.Scanner;
 
 
 public class GenerateRandomDataFiles {
-	private final static OperatingSystemType OS_TYPE = OperatingSystemType.WINDOWS;
-	
 	private Data_Common env;
 	private Data_Specs dataSpecs;
 	
@@ -48,7 +46,7 @@ public class GenerateRandomDataFiles {
 		for(int i=0; i < dbToCreate.length; i++){
 			sizeIndex = dbToCreate[i];
 			dbNamePrefix = dbPrefix + dbAllSizes[sizeIndex].toString();
-			exportDir = Data_Common.getDefaultDatafilePath(OS_TYPE);
+			exportDir = Data_Common.getDefaultDatafilePath();
 			
 			vCount = dbAllSizes[sizeIndex].getVertexCount();
 			System.out.println("Genering datafiles for " + vCount + " vertices...");
