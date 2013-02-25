@@ -6,12 +6,14 @@ import java.util.List;
 import java.util.Scanner;
 
 
-interface DatabaseConnection_Interface {
+interface Database_Connection_Interface {
 
 	public void open();
 	public void close();
 	public void delete();
 	public void create();
+	public void setLargeInsert();
+	public void unsetLargeInsert();
 	public String getDatabaseName();
 	public void createVertexTable(String table, String indexField, ArrayList<String> fieldnames);
 	public void createEdgeTable(String table, String indexField, ArrayList<String> fieldnames);

@@ -4,7 +4,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashSet;
 
-public class SearchDatabase {
+public class Database_Search {
+	final static OperatingSystemType osType = OperatingSystemType.WINDOWS;
+	
 	final static String ppathLinux = "/home/m113216/scratch/";
 	final static String fdirLinux = "/home/m113216/orient/datafiles/";
 	
@@ -21,20 +23,19 @@ public class SearchDatabase {
 	
 	// DATABASE TYPE SPECIFIC
 	String DB_TYPE;
-	DatabaseConnection_Interface db;
+	Database_Connection_Interface db;
 	
 	String performanceFile;
 	String performancePath;
 	String fileDirectory;
 
-	DatabaseType dbType;
-	
+	Database_Vendor dbType;	
 	
 	File performance;
 	FileWriter fstream;
 	BufferedWriter out;
 	
-	GlobalEnvironment env;
+	Data_Common env;
 	
 	public void openDatabase(){ db.open(); }
 	public void closeDatabase() { db.close(); }
@@ -42,27 +43,26 @@ public class SearchDatabase {
 	public String getDatabaseName() { return db.getDatabaseName(); }
 	
 	// Constructor
-	public SearchDatabase(GlobalEnvironment e){
-		String dbSize = databaseSizeToString(env.dbSize);
+	public Database_Search(Data_Common e){
 		env = e;
 		
-		if(env.osType == OperatingSystemType.LINUX){
+		if(osType == OperatingSystemType.LINUX){
 			 performancePath = ppathLinux; 
-			 fileDirectory = fdirLinux + "randomDB_" + env.dbSize + "/"; 
+			 fileDirectory = fdirLinux + env.getDatabaseName() + "/"; 
 		}
 		else{
 			 performancePath = ppathWindows;
-			 fileDirectory = fdirWindows + "randomDB_" + env.dbSize + "/";			
+			 fileDirectory = fdirWindows + env.getDatabaseName() + "/";			
 		}
 		
 		DB_TYPE = databaseTypeToString(dbType);
 		performanceFile = DB_TYPE + "_results.txt";
 				
-		if(dbType == DatabaseType.ORIENTDB){
-			db = new DatabaseConnection_OrientDB(env, dbSize);
+		if(dbType == Database_Vendor.ORIENTDB){
+			db = new Database_Connection_OrientDB(env);
 		}
 		else{
-			db = new DatabaseConnection_MySQL(env, dbSize);
+			db = new Database_Connection_MySQL(env);
 		}
 		
 		
@@ -86,20 +86,20 @@ public class SearchDatabase {
 		}
 	}
 	
-	public String databaseSizeToString(DatabaseSize size){
+	public String databaseSizeToString(Data_Size size){
 		String dbSize = "";
 		
-		if(size == DatabaseSize.SMALL) dbSize = "small";
-		else if(size == DatabaseSize.MEDIUM) dbSize = "medium";
-		else if(size == DatabaseSize.LARGE) dbSize = "large";
-		else if(size == DatabaseSize.HUGE) dbSize = "huge";
+		if(size == Data_Size.SMALL) dbSize = "small";
+		else if(size == Data_Size.MEDIUM) dbSize = "medium";
+		else if(size == Data_Size.LARGE) dbSize = "large";
+		else if(size == Data_Size.HUGE) dbSize = "huge";
 		
 		return dbSize;
 	}
 	
-	public String databaseTypeToString(DatabaseType type){
+	public String databaseTypeToString(Database_Vendor type){
 		String name = "";
-		if(type == DatabaseType.MYSQL) 	name = "mySQL";
+		if(type == Database_Vendor.MYSQL) 	name = "mySQL";
 		else 							name = "orientDB";
 		
 		return name;
@@ -123,24 +123,24 @@ public class SearchDatabase {
 		}
 	}
 
-	public HashSet<Object> runQuery(QueryType query, int index, int depth) throws OutOfMemoryError{
+	public HashSet<Object> runQuery(Database_QueryType query, int index, int depth) throws OutOfMemoryError{
 		db.getGraph(1).clear(); 
 		
 		db.traverseJava(db.getRandomRID(index), 0, depth, 1);
 
-		if(query != QueryType.TRAVERSE){
+		if(query != Database_QueryType.TRAVERSE){
 			db.getGraph(2).clear();  
 			db.traverseJava(db.getRandomRID(index + 1), 0, depth, 2);
-			if(query == QueryType.UNION){
+			if(query == Database_QueryType.UNION){
 				db.getGraph(1).addAll(db.getGraph(2));
 			}
-			else if(query == QueryType.DIFFERENCE){
+			else if(query == Database_QueryType.DIFFERENCE){
 				db.getGraph(1).removeAll(db.getGraph(2));
 			}
-			else if(query == QueryType.INTERSECTION){
+			else if(query == Database_QueryType.INTERSECTION){
 				db.getGraph(1).retainAll(db.getGraph(2));				
 			}
-			else if(query == QueryType.SYMMETRIC_DIFFERENCE){
+			else if(query == Database_QueryType.SYMMETRIC_DIFFERENCE){
 				HashSet<Object> symmetricDiff = new HashSet<Object>(db.getGraph(1));
 				symmetricDiff.addAll(db.getGraph(2));
 				HashSet<Object> tmp = new HashSet<Object>(db.getGraph(1));
@@ -154,7 +154,7 @@ public class SearchDatabase {
 	}
 	
 	
-	public boolean timePerformance(QueryType query, int iterations, int depth){
+	public boolean timePerformance(Database_QueryType query, int iterations, int depth){
 		HashSet<Object> results = null;
 		
 		long [] times = new long[iterations];
@@ -163,8 +163,8 @@ public class SearchDatabase {
 		long startTime = 0, endTime = 0;
 		int minutes, seconds;
 		
-		System.out.println("Timing " + stringQueryType(query) + " of graph with " + env.TOTAL_VERTICES + " vertices");
-		printToFile(DELIMITER + env.TOTAL_VERTICES + DELIMITER + env.TOTAL_EDGES);
+		System.out.println("Timing " + stringQueryType(query) + " of graph with " + env.getVertexCount() + " vertices");
+		printToFile(DELIMITER + env.getVertexCount() + DELIMITER + env.getEdgeCount());
 		long totalTimes = 0;
 		boolean outOfMemory = false;
 		for(int i=0; i < iterations; i++){
@@ -197,7 +197,7 @@ public class SearchDatabase {
 			minutes = (int) (avgTime / (1000 * 60));
 			seconds = (int) ((avgTime / 1000) % 60);
 			
-			System.out.println("Average #records: " + (numRecords / iterations) + " of " + env.TOTAL_VERTICES);
+			System.out.println("Average #records: " + (numRecords / iterations) + " of " + env.getVertexCount());
 			System.out.println(String.format("Average Time: %d ms or (%d min, %d sec)", avgTime, minutes, seconds)); 
 
 			printToFile(DELIMITER + (numRecords / iterations));
@@ -211,22 +211,22 @@ public class SearchDatabase {
 		return !outOfMemory;
 	}
 	
-	private String stringQueryType(QueryType t){
+	private String stringQueryType(Database_QueryType t){
 		String type = "";
 		
-		if(t == QueryType.TRAVERSE) type = "TRAVERSE";
-		else if(t == QueryType.DIFFERENCE) type = "DIFFERENCE";
-		else if(t == QueryType.INTERSECTION) type = "INTERSECTION";
-		else if(t == QueryType.UNION) type = "UNION";
-		else if(t == QueryType.SYMMETRIC_DIFFERENCE) type = "SYMMETRIC_DIFFERENCE";
+		if(t == Database_QueryType.TRAVERSE) type = "TRAVERSE";
+		else if(t == Database_QueryType.DIFFERENCE) type = "DIFFERENCE";
+		else if(t == Database_QueryType.INTERSECTION) type = "INTERSECTION";
+		else if(t == Database_QueryType.UNION) type = "UNION";
+		else if(t == Database_QueryType.SYMMETRIC_DIFFERENCE) type = "SYMMETRIC_DIFFERENCE";
 
 		return type;
 	}
 	
 
-	public void print(String date, long memory, DatabaseSize size, QueryType query, int iterations, int depth){
+	public void print(String date, long memory, Data_Size size, Database_QueryType query, int iterations, int depth){
 		System.out.print("Iterations = " + iterations + ", depth = " + depth);
-		System.out.println(", Database: " + env.DB_PATH);
+		System.out.println(", Database: " + env.getDatabaseName());
 		printToFile(date.toString() + DELIMITER + memory + DELIMITER + DB_TYPE + DELIMITER);
 		printToFile(databaseSizeToString(size) + DELIMITER + stringQueryType(query) + DELIMITER + iterations + DELIMITER + depth);
 	}

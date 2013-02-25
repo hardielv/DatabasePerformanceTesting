@@ -12,10 +12,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 
-public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
+import com.orientechnologies.orient.core.intent.OIntentMassiveInsert;
+
+public class Database_Connection_MySQL implements Database_Connection_Interface {
 	// DATABASE TYPE SPECIFIC
 	String DB_TYPE = "mysql";
-	String DB_PATH;
+	String ENV_DIR;
 	String DB_NAME;
 
 	final String JDBC_DRIVER = "com.mysql.jdbc.Driver";  
@@ -26,16 +28,16 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 	static final String USER = "lexgrid";
 	static final String PASS = "lexgrid";
 	
-	GlobalEnvironment env;
+	Data_Common env;
 	Long [] randomRID_list;
    	
 	private HashSet<Object> GRAPH1, GRAPH2;
 	
 
-	public DatabaseConnection_MySQL(GlobalEnvironment e, String size){
+	public Database_Connection_MySQL(Data_Common e){
 		env = e;
-		DB_NAME = env.DB_NAME_PREFIX + size;
-		DB_PATH = env.DB_PATH;
+		DB_NAME = env.getDatabaseName();
+		ENV_DIR = env.getDataDir();
 		GRAPH1 = new HashSet<Object>();
 		GRAPH2 = new HashSet<Object>();
 		open();
@@ -50,8 +52,8 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 			e.printStackTrace();
 		}
 
-		createPrimaryKeys(env.VERTEX_PREFIX, env.NUM_VERTEX_TYPE);
-		createPrimaryKeys(env.EDGE_PREFIX, env.NUM_EDGE_TYPE);
+		createPrimaryKeys(env.getVertexPrefix(), env.getVertexTypeCount());
+		createPrimaryKeys(env.getEdgePrefix(), env.getEdgeTypeCount());
 	}
 
 	private void createPrimaryKeys(String table, int numTables) {
@@ -80,8 +82,8 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 		}
 
 		String tableName;
-		for (int i = 0; i < env.NUM_EDGE_TYPE; i++) {
-			tableName = env.EDGE_PREFIX + i;
+		for (int i = 0; i < env.getEdgeTypeCount(); i++) {
+			tableName = env.getEdgePrefix() + i;
 			// sql = "alter table " + tableName + " add unique idx_" + tableName
 			// + " (edgeIN, edgeOUT)";
 			sql = "create index idx_" + tableName + " on " + tableName
@@ -99,8 +101,8 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 	@Override
 	public void clearEdges() {
 		String sql;
-		for (int i = 0; i < env.NUM_EDGE_TYPE; i++) {
-			sql = "Delete from " + env.EDGE_PREFIX + i;
+		for (int i = 0; i < env.getEdgeTypeCount(); i++) {
+			sql = "Delete from " + env.getEdgePrefix() + i;
 			try {
 				stmt = db.createStatement();
 				stmt.executeUpdate(sql);
@@ -163,7 +165,16 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 		}
 	}
 
-
+	@Override
+	public void setLargeInsert(){
+//		db.declareIntent(new OIntentMassiveInsert());
+	}
+	
+	@Override
+	public void unsetLargeInsert(){
+//		db.declareIntent(new OIntentMassiveInsert());
+	}
+	
 	@Override
 	public String getDatabaseName() {
 		return DB_NAME;
@@ -257,15 +268,15 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 		String idField, line, edgeType, sql, sqlFields, sqlValues;
 		Scanner lineScan;
 
-		PreparedStatement[] pStatements = new PreparedStatement[env.NUM_EDGE_TYPE];
-		int[] recordCount = new int[env.NUM_EDGE_TYPE];
+		PreparedStatement[] pStatements = new PreparedStatement[env.getEdgeTypeCount()];
+		int[] recordCount = new int[env.getEdgeTypeCount()];
 		long totalRecords = 0;
 
 		// Create sql statements and save in prepared statements array
 		for (int i = 0; i < pStatements.length; i++) {
 			recordCount[i] = 0;
-			edgeType = env.EDGE_PREFIX + i;
-			idField = edgeType + env.ID_PREFIX;
+			edgeType = env.getEdgePrefix() + i;
+			idField = edgeType + env.getTableIdPrefix();
 			// Store fields from file...
 			sqlFields = idField + ", label, edgeIN, edgeOUT";
 			sqlValues = "?, ?, ?, ?";
@@ -302,7 +313,7 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 				id_in = (Long) mapVertexRIDs.get(in_type).get(in_index);
 				id_out = (Long) mapVertexRIDs.get(out_type).get(out_index);
 
-				edgeType = env.EDGE_PREFIX + typeID;
+				edgeType = env.getEdgePrefix() + typeID;
 				edgeID++;
 				int index = 1;
 				totalRecords++;
@@ -329,7 +340,7 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 				for (int i = 0; i < recordCount.length; i++) {
 					if ((recordCount[i] + 1) % 1000 == 0) {
 						// System.out.println(totalRecords +
-						// " -- Commiting records to " + env.EDGE_PREFIX + i +
+						// " -- Commiting records to " + env.getEdgePrefix() + i +
 						// ", " + recordCount[i]);
 						pStatements[i].executeBatch();
 					}
@@ -373,7 +384,7 @@ public class DatabaseConnection_MySQL implements DatabaseConnection_Interface {
 		long minID, maxID;
 		// Collect #iterations of random RID's
 		for(int i=0; i < numRIDs; i++){
-			randomTableName = env.VERTEX_PREFIX + (int) (Math.random() * env.NUM_VERTEX_TYPE);
+			randomTableName = env.getVertexPrefix() + (int) (Math.random() * env.getVertexTypeCount());
 			primaryKey = randomTableName + "_ID";
 			try {
 				stmt = db.createStatement();

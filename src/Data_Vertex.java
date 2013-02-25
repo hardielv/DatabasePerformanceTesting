@@ -1,10 +1,10 @@
 
-public class RandomDB_Vertex {
+public class Data_Vertex {
 	protected String type;
 	protected String [] fieldValues;
 	protected int size;
 	
-	public RandomDB_Vertex(String t, int s){
+	public Data_Vertex(String t, int s){
 		type = t;
 		size = s;
 		fieldValues = new String[size];

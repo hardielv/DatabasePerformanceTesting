@@ -1,8 +1,8 @@
-public class RandomDB_Edge extends RandomDB_Vertex{
+public class Data_Edge extends Data_Vertex{
 		int vertexType_in, vertexType_out;
 		int vertexIndex_in, vertexIndex_out;
 		
-		public RandomDB_Edge(String t, int s){
+		public Data_Edge(String t, int s){
 			super(t, s);
 		}
 		

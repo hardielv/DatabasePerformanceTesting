@@ -24,29 +24,26 @@ import com.orientechnologies.orient.core.sql.filter.OSQLPredicate;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 
 
-public class DatabaseConnection_OrientDB implements DatabaseConnection_Interface {
-	String DB_TYPE = "orientdb";
-	String DB_PATH;
-	String DB_NAME;
-	OGraphDatabase db;
+public class Database_Connection_OrientDB implements Database_Connection_Interface {
+	private String orientDB_location = "C:/scratch/OrientDB/orientdb-graphed/databases/";
+	String dbName;
+	OGraphDatabase orientDB;
 	static final String USER = "admin";
 	static final String PASS = "admin";
 	
-	GlobalEnvironment env;
+	Data_Common env;
 	String [] randomRID_list;
 
 	private HashSet<Object> GRAPH1, GRAPH2;
-	ODocument tDoc;
+	ODocument vDoc;
+	ODocument eDoc;
 	
-	
-	public DatabaseConnection_OrientDB(GlobalEnvironment e, String size){
+	public Database_Connection_OrientDB(Data_Common e){
 		env = e;
-		DB_NAME = env.DB_NAME_PREFIX + size;
-		DB_PATH = env.DB_PATH;
+		dbName = env.getDatabaseName();
+		System.out.println("dbName = " + dbName);
 		GRAPH1 = new HashSet<Object>();
 		GRAPH2 = new HashSet<Object>();
-		open();
-		tDoc = db.createVertex();
 	}
 
 	@Override
@@ -54,27 +51,61 @@ public class DatabaseConnection_OrientDB implements DatabaseConnection_Interface
 		
 	}
 	
-	
 	@Override
 	public void open() {
-		File dir = new File(DB_PATH);
+		File dir = new File(orientDB_location + dbName);
 		if(!dir.exists()){
 			System.out.println("Database does not exist");
 			System.exit(1);
 		}
 		
-		db = new OGraphDatabase("local:" + DB_PATH);
-		db.open("admin",  "admin");
+		orientDB = new OGraphDatabase("local:" + orientDB_location + dbName);
+		orientDB.open("admin",  "admin");
+		vDoc = orientDB.createVertex();
+		eDoc = orientDB.createEdge(vDoc, vDoc);
 	}
 
+	@Override
+	public void delete() {
+		File dir = new File(orientDB_location + dbName);
+		if (dir.exists()) {
+			System.out.println("exists,,,,, deleting");
+			try {
+				FileUtils.deleteDirectory(dir);
+			} catch (Exception e) {
+				System.out.println("Unable to delete old version of database: "	+ dbName);
+			}
+		}
+	}
+
+	@Override
+	public void create() {
+		delete();
+		orientDB = new OGraphDatabase("local:" + orientDB_location + dbName);
+		orientDB.create();
+		orientDB.declareIntent(new OIntentMassiveInsert());
+		vDoc = orientDB.createVertex();
+		eDoc = orientDB.createEdge(vDoc, vDoc);
+	}
+	
 	@Override
 	public void close() {
-		db.close();
+		orientDB.close();
 	}
 
 	@Override
+	public void setLargeInsert(){
+		orientDB.declareIntent(new OIntentMassiveInsert());
+	}
+	
+	@Override
+	public void unsetLargeInsert(){
+//		orientDB.declareIntent(new OIntentMassiveInsert());
+	}
+	
+	@Override
 	public String getDatabaseName(){
-		return DB_NAME;
+		return dbName;
 	}
 	
 	@Override
@@ -97,9 +128,9 @@ public class DatabaseConnection_OrientDB implements DatabaseConnection_Interface
 		
 		// Collect #iterations of random RID's
 		for(int i=0; i < numRIDs; i++){
-			randomClusterName = env.VERTEX_PREFIX + (int) (Math.random() * env.NUM_VERTEX_TYPE);
-			clusterID = db.getClusterIdByName(randomClusterName); 
-			OClusterPosition [] range = db.getStorage().getClusterDataRange(clusterID);
+			randomClusterName = env.getVertexPrefix() + (int) (Math.random() * env.getVertexTypeCount());
+			clusterID = orientDB.getClusterIdByName(randomClusterName); 
+			OClusterPosition [] range = orientDB.getStorage().getClusterDataRange(clusterID);
 			
 			randomPosition = (int) (Math.random() * range[1].intValue()) + range[0].intValue();
 			randomRID_list[i] = "#" + clusterID + ":" + randomPosition;
@@ -112,7 +143,7 @@ public class DatabaseConnection_OrientDB implements DatabaseConnection_Interface
 		ArrayList<ODocument> results = null;
 		String id;
 		sql = createSQL_Traverse((String) root, depth);
-		results = db.query(new OSQLSynchQuery<OIdentifiable>(sql));
+		results = orientDB.query(new OSQLSynchQuery<OIdentifiable>(sql));
 
 		for (int i = 0; i < results.size(); i++) {
 			// System.out.println(results.get(i));
@@ -151,8 +182,146 @@ public class DatabaseConnection_OrientDB implements DatabaseConnection_Interface
 		}
 		System.out.println("Done\n\n");
 	}
+
+	@Override
+	public void createVertexTable(String table, String indexField,
+			ArrayList<String> fieldnames) {
+		createTable("vertex", table, indexField, fieldnames);
+	}
+
+	@Override
+	public void createEdgeTable(String table, String indexField,
+			ArrayList<String> fieldnames) {
+		createTable("edge", table, indexField, fieldnames);
+	}
+
+	private void createTable(String type, String table, String indexField,
+			ArrayList<String> fieldnames){
+		OSchema schema = orientDB.getMetadata().getSchema();
+		if(type.equals("edge")){
+			orientDB.createEdgeType(table);
+		}
+		else{
+			orientDB.createVertexType(table);
+		}
+		OClass oClass = schema.getClass(table);
+
+		// Create ID field with unique index
+		oClass.createProperty(indexField, OType.STRING);
+		oClass.createProperty("label", OType.STRING);
+		for (int j = 0; j < fieldnames.size(); j++) {
+			oClass.createProperty(fieldnames.get(j), OType.STRING);
+		}
+		schema.save();		
+	}
 	
+	@Override
+	public Object storeVertex(String table, String idField, Long id,
+			ArrayList<String> fieldnames, Scanner lineScan) {
+		vDoc.reset();
+		vDoc.setClassName(table);
+		vDoc.getIdentity().reset();
+		vDoc.field(idField, id);
+		vDoc.field("label", table);
+		for (String fieldName : fieldnames) {
+			String value = lineScan.next();
+			vDoc.field(fieldName, value);
+		}
+
+		vDoc.save();
+		Object vID = vDoc.getIdentity().toString();
+
+		return vID;
+	}
+
+	@Override
+	public void storeEdges(File eFile,
+			HashMap<Integer, ArrayList<String>> mapEdgeFieldNames,
+			HashMap<Integer, ArrayList<Object>> mapVertexRIDs) {		
+		try {
+			Scanner scanner = new Scanner(eFile);
+			int recordCount = 0;
+
+			ODocument doc_in, doc_out;
+			int tableID, in_tableID, in_recordID, out_tableID, out_recordID;
+
+			long edgeID0 = 0;
+			long edgeID1 = 10;
+
+			String edgeID, line, id_in, id_out, idField;
+			Scanner lineScan;
+			String edgeTable, value;
+
+			while (scanner.hasNextLine()) {
+				if ((recordCount != 0) && ((recordCount % 10000) == 0)) {
+					System.out.println("Working on the " + recordCount + "th edge");
+				}
+				edgeID = edgeID0 + "_" + edgeID1++;
+							
+				line = scanner.nextLine();
+				lineScan = new Scanner(line);
+				lineScan.useDelimiter(",");
+				
+				tableID = lineScan.nextInt();
+				in_tableID = lineScan.nextInt();
+				in_recordID = lineScan.nextInt();
+				out_tableID = lineScan.nextInt();
+				out_recordID = lineScan.nextInt();
+
+				edgeTable = env.getEdgePrefix() + tableID;
+				idField = edgeTable + env.getTableIdPrefix();
+
+				id_in = (String) mapVertexRIDs.get(in_tableID).get(in_recordID);
+				id_out = (String) mapVertexRIDs.get(out_tableID).get(out_recordID);
+				
+				doc_in = ((ArrayList<ODocument>) orientDB
+						.query(new OSQLSynchQuery<ODocument>("Select from " + id_in))).get(0);
+				doc_out = ((ArrayList<ODocument>) orientDB
+						.query(new OSQLSynchQuery<ODocument>("Select from "	+ id_out))).get(0);
+
+				eDoc.reset();
+				eDoc.setClassName(env.getEdgePrefix() + tableID);
+				eDoc.getIdentity().reset();
+
+				eDoc.field("in", doc_in);
+				eDoc.field("out", doc_out);
+
+				eDoc.field(idField, edgeID);
+				for (String fieldName : mapEdgeFieldNames.get(tableID)) {
+					value = lineScan.next();
+					eDoc.field(fieldName, value);
+				}
+
+				eDoc.save();
+				String sql = "update " + doc_in.getIdentity() + " add out = "
+						+ eDoc.getIdentity();
+				orientDB.command(new OCommandSQL(sql)).execute();
+				sql = "update " + doc_out.getIdentity() + " add in = "
+						+ eDoc.getIdentity();
+				orientDB.command(new OCommandSQL(sql)).execute();
+				recordCount++;
+			}
 	
+			scanner.close();
+
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// remove declareIntent
+	}
+
+	@Override
+	public void createIndices() {
+//		.setMandatory(true).setNotNull(true);
+//oClass.createIndex(table + env.getTableIndexPrefix(),
+//		OClass.INDEX_TYPE.UNIQUE, indexField);
+	}
+
+	@Override
+	public void clearEdges() {
+	}	
 	
 	// ------------------------------------------------------------------------------------------
 	private String createSQL_Traverse(String id, int depth){
@@ -173,7 +342,7 @@ public class DatabaseConnection_OrientDB implements DatabaseConnection_Interface
 //		String rid = "#11:272915";
 //		depth = 8;
 		OIdentifiable id;
-		System.out.println("Timing Iterator of " + iterations + " traversals of graph with " + env.TOTAL_VERTICES + " vertices");
+		System.out.println("Timing Iterator of " + iterations + " traversals of graph with " + env.getVertexCount() + " vertices");
 		System.out.println("With depth = " + depth);
 		
 		for(int i=0; i < iterations; i++){
@@ -222,187 +391,8 @@ public class DatabaseConnection_OrientDB implements DatabaseConnection_Interface
 		seconds = (int) ((avgTime / 1000) % 60);
 		
 		System.out.println(iterations + " iterations, " + depth + " depth");
-		System.out.println("Average #records: " + (numRecords / iterations) + " of " + env.TOTAL_VERTICES);
+		System.out.println("Average #records: " + (numRecords / iterations) + " of " + env.getVertexCount());
 		System.out.println(String.format("Average Time: %d ms or (%d min, %d sec)", avgTime, minutes, seconds)); 
 		System.out.println();					
-	}
-
-	@Override
-	public void delete() {
-		File dir = new File(env.DB_PATH);
-		if (dir.exists()) {
-			try {
-				FileUtils.deleteDirectory(dir);
-			} catch (Exception e) {
-				System.out.println("Unable to delete old version of database: "
-						+ env.DB_PATH);
-			}
-		}
-	}
-
-	@Override
-	public void create() {
-		delete();
-		db = new OGraphDatabase("local:" + env.DB_PATH);
-		db.create();
-	}
-
-	@Override
-	public void createVertexTable(String table, String indexField,
-			ArrayList<String> fieldnames) {
-
-		OSchema schema = db.getMetadata().getSchema();
-		db.createVertexType(table);
-		OClass oClass = schema.getClass(table);
-
-		// Create ID field with unique index
-		oClass.createProperty(indexField, OType.STRING)
-				.setMandatory(true).setNotNull(true);
-		oClass.createIndex(table + env.IDx_PREFIX,
-				OClass.INDEX_TYPE.UNIQUE, indexField);
-		oClass.createProperty("label", OType.STRING);
-		// Create other fields
-		for (int j = 0; j < fieldnames.size(); j++) {
-			oClass.createProperty(fieldnames.get(j), OType.STRING);
-		}
-		schema.save();
-	}
-
-	@Override
-	public void createEdgeTable(String table, String indexField,
-			ArrayList<String> fieldnames) {
-		OSchema schema = db.getMetadata().getSchema();
-		db.createEdgeType(table);
-		OClass oClass = schema.getClass(table);
-
-		// Create ID field with unique index
-		oClass.createProperty(indexField, OType.STRING);
-		oClass.createProperty("label", OType.STRING);
-		for (int j = 0; j < fieldnames.size(); j++) {
-			oClass.createProperty(fieldnames.get(j), OType.STRING);
-		}
-		schema.save();
-	}
-
-	@Override
-	public Object storeVertex(String table, String idField, Long id,
-			ArrayList<String> fieldnames, Scanner lineScan) {
-		db.declareIntent(new OIntentMassiveInsert());
-		
-		tDoc.reset();
-		tDoc.setClassName(table);
-		tDoc.getIdentity().reset();
-		tDoc.field(idField, id);
-		tDoc.field("label", table);
-		for (String fieldName : fieldnames) {
-			String value = lineScan.next();
-			tDoc.field(fieldName, value);
-		}
-
-		tDoc.save();
-		Object vID = tDoc.getIdentity().toString();
-
-		// remove declareIntent
-		return vID;
-	}
-
-	@Override
-	public void storeEdges(File eFile,
-			HashMap<Integer, ArrayList<String>> mapEdgeFieldNames,
-			HashMap<Integer, ArrayList<Object>> mapVertexRIDs) {
-		
-		db.declareIntent(new OIntentMassiveInsert());
-		try {
-			Scanner scanner = new Scanner(eFile);
-			int recordCount = 0;
-
-			ODocument doc_in, doc_out;
-			ODocument tDoc = db.createEdge(new ODocument(), new ODocument(),
-					env.EDGE_PREFIX + 0);
-			int typeID, in_type, in_index, out_type, out_index;
-
-			long edgeID0 = 0;
-			long edgeID1 = 10;
-
-			String edgeID, line, id_in, id_out, idField;
-			Scanner lineScan;
-			String edgeType, value;
-
-			while (scanner.hasNextLine()) {
-				recordCount++;
-				line = scanner.nextLine();
-				lineScan = new Scanner(line);
-				lineScan.useDelimiter(",");
-				typeID = lineScan.nextInt();
-				in_type = lineScan.nextInt();
-				in_index = lineScan.nextInt();
-				out_type = lineScan.nextInt();
-				out_index = lineScan.nextInt();
-				id_in = (String) mapVertexRIDs.get(in_type).get(in_index);
-				id_out = (String) mapVertexRIDs.get(out_type).get(out_index);
-				doc_in = ((ArrayList<ODocument>) db
-						.query(new OSQLSynchQuery<ODocument>("Select from "
-								+ id_in))).get(0);
-				doc_out = ((ArrayList<ODocument>) db
-						.query(new OSQLSynchQuery<ODocument>("Select from "
-								+ id_out))).get(0);
-
-				tDoc.reset();
-				tDoc.setClassName(env.EDGE_PREFIX + typeID);
-				tDoc.getIdentity().reset();
-
-				tDoc.field("in", doc_in);
-				tDoc.field("out", doc_out);
-
-				// Store ID field first
-				edgeType = env.EDGE_PREFIX + typeID;
-				idField = edgeType + env.ID_PREFIX;
-				if (edgeID1 == 0) {
-					edgeID1 = 10;
-					edgeID0++;
-				}
-
-				edgeID = edgeID0 + "_" + edgeID1++;
-				tDoc.field(idField, edgeID);
-
-				if ((recordCount % 1000) == 0)
-					db.commit();
-				if ((recordCount % 10000) == 0) {
-					System.out.println("Working on the " + recordCount
-							+ "th edge");
-				}
-
-				for (String fieldName : mapEdgeFieldNames.get(typeID)) {
-					value = lineScan.next();
-					tDoc.field(fieldName, value);
-				}
-
-				tDoc.save();
-				String sql = "update " + doc_in.getIdentity() + " add out = "
-						+ tDoc.getIdentity();
-				db.command(new OCommandSQL(sql)).execute();
-				sql = "update " + doc_out.getIdentity() + " add in = "
-						+ tDoc.getIdentity();
-				db.command(new OCommandSQL(sql)).execute();
-			}
-
-			scanner.close();
-
-		} catch (FileNotFoundException e) {
-			System.err.println("(storeEdge) Error: " + e.getMessage());
-		} catch (Exception e) {
-			System.err.println("(storeEdge) Error: " + e.getMessage());
-		}
-		// remove declareIntent
-	}
-
-	@Override
-	public void createIndices() {
-	}
-
-	@Override
-	public void clearEdges() {
-		// TODO Auto-generated method stub
-		
 	}
 }
