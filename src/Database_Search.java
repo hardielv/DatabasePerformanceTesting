@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.util.HashSet;
+import java.util.Iterator;
 
 public class Database_Search {
 	final static int iterations = 1;
@@ -83,34 +84,68 @@ public class Database_Search {
 		}
 	}
 
-	public HashSet<Object> runQuery(Database_QueryType query, int index, int depth) throws OutOfMemoryError{
-		db.getGraph(1).clear(); 
+	public void testQuery(Database_QueryType query, int iterations, int depth) throws OutOfMemoryError{
+		HashSet<Object> graph = null; 
+
+		for(int i=0; i < iterations; i++){
+			System.out.println("Testing query: " + query.toString());
+			
+			graph = runQuery(Database_QueryType.TRAVERSE, i, depth);
+			System.out.println("Traverse of RID(" + db.getRandomRID(i) + ") to depth(" + depth + ")");
+			printResults(graph);
+
+			if(query != Database_QueryType.TRAVERSE){
+				System.out.println("Traverse of RID(" + db.getRandomRID(i) + ") to depth(" + depth + ")");
+				graph = runQuery(Database_QueryType.TRAVERSE, i + 1, depth);			
+				printResults(graph);
+
+				System.out.println("Results of query: " + query.toString());
+				graph = runQuery(query, i, depth);
+				printResults(graph);
+			}
+		}
+	}
+
+	public void printResults(HashSet<Object> graph){
+		Iterator<Object> iterator = graph.iterator();
+		while(iterator.hasNext()){
+			System.out.print(iterator.next() + ", ");
+		}
 		
-		db.traverseJava(db.getRandomRID(index), 0, depth, 1);
+		System.out.println("\n");
+	}
+	
+	
+	public HashSet<Object> runQuery(Database_QueryType query, int index, int depth) throws OutOfMemoryError{
+		int graphID_1 = 1, graphID_2 = 2;
+		int initialLevel = 0;
+		
+		db.getGraph(graphID_1).clear();
+		db.traverseJava(db.getRandomRID(index), initialLevel, depth, graphID_1);
 
 		if(query != Database_QueryType.TRAVERSE){
-			db.getGraph(2).clear();  
-			db.traverseJava(db.getRandomRID(index + 1), 0, depth, 2);
+			db.getGraph(graphID_2).clear();  
+			db.traverseJava(db.getRandomRID(index + 1), initialLevel, depth, graphID_2);
 			if(query == Database_QueryType.UNION){
-				db.getGraph(1).addAll(db.getGraph(2));
+				db.getGraph(1).addAll(db.getGraph(graphID_2));
 			}
 			else if(query == Database_QueryType.DIFFERENCE){
-				db.getGraph(1).removeAll(db.getGraph(2));
+				db.getGraph(1).removeAll(db.getGraph(graphID_2));
 			}
 			else if(query == Database_QueryType.INTERSECTION){
-				db.getGraph(1).retainAll(db.getGraph(2));				
+				db.getGraph(1).retainAll(db.getGraph(graphID_2));				
 			}
 			else if(query == Database_QueryType.SYMMETRIC_DIFFERENCE){
-				HashSet<Object> symmetricDiff = new HashSet<Object>(db.getGraph(1));
+				HashSet<Object> symmetricDiff = new HashSet<Object>(db.getGraph(graphID_1));
 				symmetricDiff.addAll(db.getGraph(2));
-				HashSet<Object> tmp = new HashSet<Object>(db.getGraph(1));
-				tmp.retainAll(db.getGraph(2));
+				HashSet<Object> tmp = new HashSet<Object>(db.getGraph(graphID_1));
+				tmp.retainAll(db.getGraph(graphID_2));
 				symmetricDiff.removeAll(tmp);
 				return symmetricDiff;
 			}
 		}
 		
-		return db.getGraph(1);
+		return db.getGraph(graphID_1);
 	}
 	
 	

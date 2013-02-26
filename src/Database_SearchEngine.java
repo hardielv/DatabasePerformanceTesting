@@ -27,8 +27,8 @@ public class Database_SearchEngine {
 		
 		collectDatabaseNames(dir, databaseNames);
 		
-		int iterations = 10;
-		int minDepth = 2, maxDepth = 10;
+		int iterations = 1;
+		int minDepth = 2, maxDepth = 2;
 		
 		Database_Search searchDB; 
 		long memory = Runtime.getRuntime().totalMemory();
@@ -57,7 +57,9 @@ public class Database_SearchEngine {
 						
 						searchDB.openDatabase();
 						searchDB.collectRandomRIDs(iterations);
-						completed = searchDB.timePerformance(queryList[k], iterations, depth);
+						
+						searchDB.testQuery(queryList[k], iterations, depth);
+//						completed = searchDB.timePerformance(queryList[k], iterations, depth);
 	
 						searchDB.closeDatabase();
 						searchDB.closeFiles();

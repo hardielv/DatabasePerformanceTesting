@@ -25,7 +25,9 @@ import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 
 
 public class Database_Connection_OrientDB implements Database_Connection_Interface {
-	private String orientDB_location = "C:/scratch/OrientDB/orientdb-graphed/databases/";
+	private String dbDefaultDir_Windows = "C:/scratch/OrientDB/orientdb-graphed/databases/";
+	private String dbDefaultDir_Linux = "/home/m113216/orient/databases/";
+	private String dbDir = "";
 	String dbName;
 	OGraphDatabase orientDB;
 	static final String USER = "admin";
@@ -42,6 +44,10 @@ public class Database_Connection_OrientDB implements Database_Connection_Interfa
 		env = e;
 		dbName = env.getDatabaseName();
 		System.out.println("dbName = " + dbName);
+		dbDir = dbDefaultDir_Windows;
+		if(Data_Common.determineOS() == OperatingSystemType.LINUX){
+			dbDir = dbDefaultDir_Linux;
+		}
 		GRAPH1 = new HashSet<Object>();
 		GRAPH2 = new HashSet<Object>();
 	}
@@ -53,13 +59,13 @@ public class Database_Connection_OrientDB implements Database_Connection_Interfa
 	
 	@Override
 	public void open() {
-		File dir = new File(orientDB_location + dbName);
+		File dir = new File(dbDir + dbName);
 		if(!dir.exists()){
 			System.out.println("Database does not exist");
 			System.exit(1);
 		}
 		
-		orientDB = new OGraphDatabase("local:" + orientDB_location + dbName);
+		orientDB = new OGraphDatabase("local:" + dbDir + dbName);
 		orientDB.open("admin",  "admin");
 		vDoc = orientDB.createVertex();
 		eDoc = orientDB.createEdge(vDoc, vDoc);
@@ -67,7 +73,7 @@ public class Database_Connection_OrientDB implements Database_Connection_Interfa
 
 	@Override
 	public void delete() {
-		File dir = new File(orientDB_location + dbName);
+		File dir = new File(dbDir + dbName);
 		if (dir.exists()) {
 			System.out.println("exists,,,,, deleting");
 			try {
@@ -81,7 +87,7 @@ public class Database_Connection_OrientDB implements Database_Connection_Interfa
 	@Override
 	public void create() {
 		delete();
-		orientDB = new OGraphDatabase("local:" + orientDB_location + dbName);
+		orientDB = new OGraphDatabase("local:" + dbDir + dbName);
 		orientDB.create();
 		orientDB.declareIntent(new OIntentMassiveInsert());
 		vDoc = orientDB.createVertex();

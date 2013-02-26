@@ -27,8 +27,8 @@ public class GenerateRandomDataFiles {
 		boolean print = false;
 		boolean randomTypeCounts = false;
 		String dbPrefix = "randomDB_";
-		int vertexTypes = 5;
-		int edgeTypes = 5;
+		int vertexTypes = 200;
+		int edgeTypes = 20;
 		int vertexFields = 4;
 		int edgeFields = 3;
 		
