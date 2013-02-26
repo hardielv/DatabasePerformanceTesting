@@ -13,6 +13,7 @@ public class Database_SearchEngine {
 		Database_Vendor [] dbVendors = Database_Vendor.values(); 
 		int vendorIndex = 0;
 		
+		
 		Database_QueryType [] queryList = Database_QueryType.values(); 
 //		Database_QueryType [] queryList = {Database_QueryType.TRAVERSE};
 		int [] queryIndices = {0, 1, 2, 3};
@@ -27,8 +28,8 @@ public class Database_SearchEngine {
 		
 		collectDatabaseNames(dir, databaseNames);
 		
-		int iterations = 1;
-		int minDepth = 2, maxDepth = 2;
+		int iterations = 10;
+		int minDepth = 2, maxDepth = 10;
 		
 		Database_Search searchDB; 
 		long memory = Runtime.getRuntime().totalMemory();
@@ -58,8 +59,8 @@ public class Database_SearchEngine {
 						searchDB.openDatabase();
 						searchDB.collectRandomRIDs(iterations);
 						
-						searchDB.testQuery(queryList[k], iterations, depth);
-//						completed = searchDB.timePerformance(queryList[k], iterations, depth);
+//						searchDB.testQuery(queryList[k], iterations, depth);
+						completed = searchDB.timePerformance(queryList[k], iterations, depth);
 	
 						searchDB.closeDatabase();
 						searchDB.closeFiles();

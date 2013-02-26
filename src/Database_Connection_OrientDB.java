@@ -58,30 +58,37 @@ public class Database_Connection_OrientDB implements Database_Connection_Interfa
 	}
 	
 	@Override
-	public void open() {
+	public boolean open() {
 		File dir = new File(dbDir + dbName);
 		if(!dir.exists()){
 			System.out.println("Database does not exist");
-			System.exit(1);
+			return false;
 		}
 		
 		orientDB = new OGraphDatabase("local:" + dbDir + dbName);
 		orientDB.open("admin",  "admin");
 		vDoc = orientDB.createVertex();
 		eDoc = orientDB.createEdge(vDoc, vDoc);
+		return true;
 	}
 
 	@Override
-	public void delete() {
+	public boolean delete() {
+		boolean success = false;
 		File dir = new File(dbDir + dbName);
 		if (dir.exists()) {
 			System.out.println("exists,,,,, deleting");
 			try {
 				FileUtils.deleteDirectory(dir);
+				success = true;
 			} catch (Exception e) {
 				System.out.println("Unable to delete old version of database: "	+ dbName);
 			}
 		}
+		else{
+			success = true;
+		}
+		return success;
 	}
 
 	@Override

@@ -8,10 +8,12 @@ import java.util.Scanner;
 
 interface Database_Connection_Interface {
 
-	public void open();
+	public boolean open();
+	public boolean delete();
 	public void close();
-	public void delete();
 	public void create();
+	
+	
 	public void setLargeInsert();
 	public void unsetLargeInsert();
 	public String getDatabaseName();

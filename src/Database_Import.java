@@ -31,8 +31,8 @@ public class Database_Import {
 		}
 	}
 
-	public void openDatabase() { database.open(); }
-	public void deleteDatabase() { database.delete(); }
+	public boolean openDatabase() { return database.open(); }
+	public boolean deleteDatabase() { return database.delete(); }
 	public void createDatabase() { database.create(); }
 	public void closeDatabase() { database.close(); }
 	public void clearEdges() { database.clearEdges(); }

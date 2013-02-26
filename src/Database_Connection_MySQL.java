@@ -113,16 +113,19 @@ public class Database_Connection_MySQL implements Database_Connection_Interface 
 	}
 
 	@Override
-	public void delete() {
+	public boolean delete() {
+		boolean success = false;
 		try {
 			String sql = "DROP DATABASE " + DB_NAME;
 			System.out.println(sql);
 			stmt.executeUpdate(sql);
+			success = true;
 		} catch (SQLException se) {
 			se.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		return success;
 	}
 
 	@Override
@@ -140,17 +143,20 @@ public class Database_Connection_MySQL implements Database_Connection_Interface 
 	}
 
 	@Override
-	public void open() {
+	public boolean open() {
+		boolean success = false;
 		try {
 			Class.forName("com.mysql.jdbc.Driver");
 			db = DriverManager.getConnection(DB_URL, USER, PASS);
 			stmt = db.createStatement();
 			stmt.executeUpdate("USE " + DB_NAME);
+			success = true;
 		} catch (SQLException se) {
 			se.printStackTrace();
 		} catch (ClassNotFoundException ce) {
 			ce.printStackTrace();
 		}
+		return success;
 	}
 
 	@Override

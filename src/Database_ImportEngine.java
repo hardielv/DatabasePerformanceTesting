@@ -13,6 +13,7 @@ public class Database_ImportEngine {
 		Database_Vendor [] dbVendors = {Database_Vendor.ORIENTDB};
 
 		Database_Import importDB;
+		
 		String datafilePath = Data_Common.getDefaultDatafilePath();
 		String dataName;
 		
