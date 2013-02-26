@@ -2,16 +2,13 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.HashSet;
 
 public class Database_Search {
-	final static String [] headers = {"Date", "HeapSize", "DB_VENDOR", "DB_Name", "Query", "Iterations", "Depth", "#V", "#E", "AvgRecs", "AvgMS", "AvgMin", "AvgSec"};
-	
 	final static int iterations = 1;
 	final static int minDepth = 2, maxDepth = 2;
-	
-//	final static String DELIMITER = ",";
-	final static String DELIMITER = "\t";
 	
 	// DATABASE TYPE SPECIFIC
 	String DB_VENDOR;
@@ -21,6 +18,7 @@ public class Database_Search {
 	String resultsDir;
 
 	Database_Vendor dbVendor;	
+	PerformanceResults testResults;
 	
 	File performance;
 	FileWriter fstream;
@@ -38,6 +36,7 @@ public class Database_Search {
 		env = e;
 		dbVendor = vendor;
 		resultsDir = rDir;
+		testResults = new PerformanceResults();
 		
 		DB_VENDOR = dbVendor.toString();
 		resultsFile = DB_VENDOR + "_results.txt";
@@ -49,7 +48,10 @@ public class Database_Search {
 			db = new Database_Connection_MySQL(env);
 		}
 		
-		
+		openPerformanceFile();
+	}
+
+	private void openPerformanceFile(){
 		boolean addHeaders  = true;
 		performance = new File(resultsDir + resultsFile);
 		if(performance.exists()) addHeaders = false;
@@ -57,13 +59,7 @@ public class Database_Search {
 			fstream = new FileWriter(performance, true);
 			out = new BufferedWriter(fstream);
 			if(addHeaders){
-				for(int i = 0; i < headers.length; i++){
-					printToFile(headers[i]);
-					if(i < (headers.length - 1)){
-						printToFile(DELIMITER);
-					}
-				}
-				printToFile("\n");
+				printToFile(testResults.getHeaders() + "\n");
 			}
 		} catch (IOException ex) {
 			ex.printStackTrace();
@@ -121,23 +117,36 @@ public class Database_Search {
 	public boolean timePerformance(Database_QueryType query, int iterations, int depth){
 		HashSet<Object> results = null;
 		
+		ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
+//		if(threadBean.isCurrentThreadCpuTimeSupported()){
+//			System.out.println("measuring cpu time");
+//		}
+			
 		long [] times = new long[iterations];
+		long [] cpuTimes = new long[iterations];
 		int numRecords = 0;
 		
 		long startTime = 0, endTime = 0;
 		int minutes, seconds;
+		long cpuStart, cpuEnd;
+		int cpuMin, cpuSec;
 		
+		System.out.println("----------------------------------------");
 		System.out.println("Timing " + query.toString() + " of graph with " + env.getVertexCount() + " vertices");
-		printToFile(DELIMITER + env.getVertexCount() + DELIMITER + env.getEdgeCount());
+		testResults.saveField(PerformanceResultFields.VERTEX_COUNT, "" + env.getVertexCount());
+		testResults.saveField(PerformanceResultFields.EDGE_COUNT, "" + env.getEdgeCount());
 		long totalTimes = 0;
+		long cpuTotalTimes = 0;
 		boolean outOfMemory = false;
 		for(int i=0; i < iterations; i++){
 			System.out.print((i + 1) + " ... ");
 			try{
 				// Time query
+				cpuStart = threadBean.getCurrentThreadCpuTime();
 				startTime = System.currentTimeMillis();
 				results = runQuery(query, i, depth);
 				endTime = System.currentTimeMillis();
+				cpuEnd = threadBean.getCurrentThreadCpuTime();
 	
 				if(results != null)	{
 					numRecords += results.size();
@@ -153,19 +162,36 @@ public class Database_Search {
 			minutes = (int) (times[i] / (1000 * 60));
 			seconds = (int) ((times[i] / 1000) % 60);
 			totalTimes += times[i];
+			
+			cpuTimes[i] = (cpuEnd - cpuStart)/1000000;
+			cpuMin = (int) (cpuTimes[i] / (1000 * 60));
+			cpuSec = (int) ((cpuTimes[i] / 1000) % 60);
+			cpuTotalTimes += cpuTimes[i];
 		}
 		System.out.println();
 		
 		if(!outOfMemory){
 			long avgTime = totalTimes / iterations;
+			long cpuAvg = cpuTotalTimes / iterations;
 			minutes = (int) (avgTime / (1000 * 60));
 			seconds = (int) ((avgTime / 1000) % 60);
+			cpuMin = (int) (cpuAvg / (1000 * 60));
+			cpuSec = (int) ((cpuAvg / 1000) % 60);
+
 			
 			System.out.println("Average #records: " + (numRecords / iterations) + " of " + env.getVertexCount());
 			System.out.println(String.format("Average Time: %d ms or (%d min, %d sec)", avgTime, minutes, seconds)); 
+			System.out.println(String.format("Average CPU Time: %d ms or (%d min, %d sec)\n", cpuAvg, cpuMin, cpuSec)); 
 
-			printToFile(DELIMITER + (numRecords / iterations));
-			printToFile(DELIMITER + avgTime + DELIMITER + minutes + DELIMITER + seconds + "\n"); 
+			testResults.saveField(PerformanceResultFields.AVG_RECORDS, "" + (numRecords / iterations));
+			testResults.saveField(PerformanceResultFields.AVG_TIME_MS, "" + avgTime);
+			testResults.saveField(PerformanceResultFields.AVG_TIME_MIN, "" + minutes);
+			testResults.saveField(PerformanceResultFields.AVG_TIME_SEC,  "" + seconds);
+			
+			testResults.saveField(PerformanceResultFields.AVG_CPU_TIME_MS, "" + cpuAvg);
+			testResults.saveField(PerformanceResultFields.AVG_CPU_TIME_MIN, "" + cpuMin);
+			testResults.saveField(PerformanceResultFields.AVG_CPU_TIME_SEC,  "" + cpuSec);
+			printToFile(testResults.toString() + "\n");
 		}
 		try {
 			out.flush();
@@ -178,8 +204,13 @@ public class Database_Search {
 	public void print(String date, long memory, Database_QueryType query, int iterations, int depth){
 		System.out.print("Iterations = " + iterations + ", depth = " + depth);
 		System.out.println(", Database: " + env.getDatabaseName());
-		printToFile(date.toString() + DELIMITER + memory + DELIMITER + DB_VENDOR + DELIMITER);
-		printToFile(env.getDatabaseName() + DELIMITER + query.toString() + DELIMITER + iterations + DELIMITER + depth);
+		testResults.saveField(PerformanceResultFields.DATE, date.toString());
+		testResults.saveField(PerformanceResultFields.HEAPSIZE, "" + memory);
+		testResults.saveField(PerformanceResultFields.DB_VENDOR, "" + DB_VENDOR);
+		testResults.saveField(PerformanceResultFields.DB_NAME, "" + env.getDatabaseName());
+		testResults.saveField(PerformanceResultFields.QUERY, "" + query.toString());
+		testResults.saveField(PerformanceResultFields.ITERATIONS, "" + iterations);
+		testResults.saveField(PerformanceResultFields.DEPTH, "" + depth);		
 	}
 	
 }
