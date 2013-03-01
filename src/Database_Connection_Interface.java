@@ -19,6 +19,7 @@ interface Database_Connection_Interface {
 	public String getDatabaseName();
 	public void createVertexTable(String table, String indexField, ArrayList<String> fieldnames);
 	public void createEdgeTable(String table, String indexField, ArrayList<String> fieldnames);
+	public void createEdgeTable();
 	public Object storeVertex(String table, String idField, Long id, ArrayList<String> fieldnames, Scanner lineScan);
 	public void storeEdges(File eFile, 
 			HashMap<Integer, ArrayList<String>> mapEdgeFieldNames, 

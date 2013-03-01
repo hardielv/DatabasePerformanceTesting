@@ -10,7 +10,7 @@ public class Database_ImportEngine {
 		String dataPrefix = "randomDB_";
 
 //		DatabaseType [] dbTypes = {DatabaseType.MYSQL};
-		Database_Vendor [] dbVendors = {Database_Vendor.ORIENTDB};
+		Database_Vendor [] dbVendors = {Database_Vendor.MYSQL};
 
 		Database_Import importDB;
 		

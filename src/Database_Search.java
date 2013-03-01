@@ -247,5 +247,8 @@ public class Database_Search {
 		testResults.saveField(PerformanceResultFields.ITERATIONS, "" + iterations);
 		testResults.saveField(PerformanceResultFields.DEPTH, "" + depth);		
 	}
+	public void createEdgeTable() {
+		db.createEdgeTable();
+	}
 	
 }

@@ -25,10 +25,10 @@ public class GenerateRandomDataFiles {
 	
 	public static void main(String[] args) {
 		boolean print = false;
-		boolean randomTypeCounts = false;
+		boolean randomType_Counts = true;
 		String dbPrefix = "randomDB_";
-		int vertexTypes = 200;
-		int edgeTypes = 20;
+		int vertexTypes = 10;
+		int edgeTypes = 5;
 		int vertexFields = 4;
 		int edgeFields = 3;
 		
@@ -36,8 +36,8 @@ public class GenerateRandomDataFiles {
 		Data_MaxValues maxValues = new Data_MaxValues(vertexTypes, edgeTypes, vertexFields, edgeFields);
 
 		// List of indices of corresponding data_sizes to generate
-		int dbToCreate[] = {4};
-//		int dbToCreate[] = {0, 1, 2, 3, 4};  // ALL
+//		int dbToCreate[] = {4};
+		int dbToCreate[] = {0, 1, 2, 3, 4};  // ALL
 
 		String dbNamePrefix, exportDir;
 		int sizeIndex, vCount;
@@ -51,7 +51,7 @@ public class GenerateRandomDataFiles {
 			vCount = dbAllSizes[sizeIndex].getVertexCount();
 			System.out.println("Genering datafiles for " + vCount + " vertices...");
 			data = new Data_Specs(dbAllSizes[sizeIndex], maxValues);
-			randomDB = new GenerateRandomDataFiles(data, dbNamePrefix, exportDir, randomTypeCounts);
+			randomDB = new GenerateRandomDataFiles(data, dbNamePrefix, exportDir, randomType_Counts);
 			if(randomDB.createDirectory()){
 				randomDB.createGraph();
 				if(print) randomDB.print();

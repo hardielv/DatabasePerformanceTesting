@@ -408,4 +408,10 @@ public class Database_Connection_OrientDB implements Database_Connection_Interfa
 		System.out.println(String.format("Average Time: %d ms or (%d min, %d sec)", avgTime, minutes, seconds)); 
 		System.out.println();					
 	}
+
+	@Override
+	public void createEdgeTable() {
+		// TODO Auto-generated method stub
+		
+	}
 }

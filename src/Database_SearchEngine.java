@@ -10,13 +10,13 @@ public class Database_SearchEngine {
 		String resultsDir_Linux = "/home/m113216/scratch/";
 		String resultsDir_Windows = "C:/scratch/";
 
-		Database_Vendor [] dbVendors = Database_Vendor.values(); 
+//		Database_Vendor [] dbVendors = Database_Vendor.values(); 
+		Database_Vendor [] dbVendors = {Database_Vendor.MYSQL}; 
 		int vendorIndex = 0;
 		
 		
 		Database_QueryType [] queryList = Database_QueryType.values(); 
-//		Database_QueryType [] queryList = {Database_QueryType.TRAVERSE};
-		int [] queryIndices = {0, 1, 2, 3};
+		int [] queryIndices = {0};  // 0...4, 0 = Traverse
 		
 		String dir = null;
 		ArrayList<String> databaseNames = new ArrayList<String>();
@@ -29,7 +29,8 @@ public class Database_SearchEngine {
 		collectDatabaseNames(dir, databaseNames);
 		
 		int iterations = 10;
-		int minDepth = 2, maxDepth = 10;
+		int minDepth = 8, maxDepth = 10;
+		boolean storeEdges = true;
 		
 		Database_Search searchDB; 
 		long memory = Runtime.getRuntime().totalMemory();
@@ -57,6 +58,12 @@ public class Database_SearchEngine {
 						searchDB.print(date.toString(), memory, queryList[queryIndices[k]], iterations, depth);
 						
 						searchDB.openDatabase();
+						// NEEDED ONLY FOR MYSQL
+						if(storeEdges){
+							System.out.println("Collecting edges to tempEdges");
+							searchDB.createEdgeTable();
+						}
+						
 						searchDB.collectRandomRIDs(iterations);
 						
 //						searchDB.testQuery(queryList[k], iterations, depth);

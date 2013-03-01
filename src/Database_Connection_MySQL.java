@@ -482,4 +482,45 @@ public class Database_Connection_MySQL implements Database_Connection_Interface 
 		sql += " order by " + sqlOrder;
 		return sql;
 	}
+
+	@Override
+	public void createEdgeTable() {
+		String sql, tablename;
+		try {
+			sql = "DROP TABLE IF EXISTS tempEdges";
+			System.out.println(sql);
+			
+			Statement stmt2 = db.createStatement();			
+			stmt2.execute(sql);
+			
+			sql = "CREATE TABLE tempEdges ";
+			sql += " (edgeID BIGINT NOT NULL, edgeIN BIGINT NOT NULL, edgeOUT BIGINT NOT NULL)"; 
+				
+			System.out.println(sql);
+			stmt2.execute(sql);
+			
+				
+			String field = "Tables_in_" + env.getDatabaseName();
+			sql = "show tables where " + field + " like 'Edge%'";
+			System.out.println(sql);
+			ResultSet edgeTables = stmt2.executeQuery(sql);
+			while(edgeTables.next()){
+				Statement stmt3 = db.createStatement();			
+				tablename = edgeTables.getString(field);
+				sql = "insert into tempEdges (edgeID, edgeIN, edgeOUT) select " + tablename + "_ID, edgeIN, edgeOUT from " + tablename;
+				System.out.println(sql);
+				stmt3.executeUpdate(sql);
+				stmt3.close();
+			}
+				
+			System.out.println("Creating index for tempEdges");
+			sql = "create index idx_tempEdges on tempEdges (edgeIN, edgeOUT)";
+			stmt2.executeUpdate(sql);
+
+			stmt2.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }
